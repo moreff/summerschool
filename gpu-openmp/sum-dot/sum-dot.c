@@ -11,18 +11,25 @@ int main(void)
         vecA[i] = 1.0 / ((double) (NX - i));
         vecB[i] = vecA[i] * vecA[i];
     }
+    double res = 0.0;
 
     // TODO start: create a data region and offload the two computations
     // so that data is kept in the device between the computations
-
-    for (int i = 0; i < NX; i++) {
-        vecC[i] = vecA[i] + vecB[i];
-    }
-
-    double res = 0.0;
-
-    for (int i = 0; i < NX; i++) {
-        res += vecC[i] * vecB[i];
+    #pragma omp target data map(to:vecA,vecB) map(from:vecC,res)
+    {
+        #pragma omp target 
+        #pragma omp parallel for 
+        for (int i = 0; i < NX; i++) {
+            vecC[i] = vecA[i] + vecB[i];
+        }
+    
+        
+        #pragma omp target 
+        #pragma omp parallel for reduction(+:res)
+        for (int i = 0; i < NX; i++) {
+            res += vecC[i] * vecB[i];
+        }
+    
     }
 
     // TODO end
