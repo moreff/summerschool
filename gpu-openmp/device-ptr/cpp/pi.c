@@ -44,7 +44,8 @@ float gpu_pi(size_t n)
     y = (float *)malloc(n * sizeof(float));
 
     // TODO start: allocate x and y in the device with OpenMP enter data
-
+    //#pragma omp target data map(from:x[:n],y[:n])
+    #pragma omp target enter data map(alloc:x[0:n],y[0:n])
     // TODO end
 
     inside = 0;
@@ -52,17 +53,18 @@ float gpu_pi(size_t n)
     istat = curandCreateGenerator(&g, CURAND_RNG_PSEUDO_DEFAULT);
 
     // TODO start: use device pointer for CUDA random generator calls
-
-    istat = curandGenerateUniform(g, x, n);
-    if (istat != CURAND_STATUS_SUCCESS) printf("Error in curandGenerate: %d\n", istat);
-    istat = curandGenerateUniform(g, y, n);
-    if (istat != CURAND_STATUS_SUCCESS) printf("Error in curandGenerate: %d\n", istat);
-
+    #pragma omp target data use_device_ptr(x, y) 
+    {
+        istat = curandGenerateUniform(g, x, n);
+        if (istat != CURAND_STATUS_SUCCESS) printf("Error in curandGenerate: %d\n", istat);
+        istat = curandGenerateUniform(g, y, n);
+        if (istat != CURAND_STATUS_SUCCESS) printf("Error in curandGenerate: %d\n", istat);
+    }
     // TODO end
 
 
     // TODO start: execute the loop in parallel in device
-
+    #pragma omp target loop reduction(+:inside)
         for (int i = 0; i < n; i++) {
             if (x[i]*x[i] + y[i]*y[i] < 1.0) {
                 inside++;
@@ -72,7 +74,7 @@ float gpu_pi(size_t n)
     // TODO end
 
     // TODO start: deallocate x and y in the device with OpenMP exit data
-
+    #pragma omp target exit data map(delete:x[:n],y[:n])
     // TODO end
 
     free(x);
