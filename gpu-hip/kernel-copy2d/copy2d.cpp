@@ -2,8 +2,33 @@
 #include <stdio.h>
 #include <math.h>
 
+#define DEBUG 0
+
 // TODO: add a device kernel that copies all elements of a vector
 //       using GPU threads in a 2D grid
+#define HIP_SAFECALL(x) {      \
+  hipError_t status = x;       \
+  if (status != hipSuccess) {  \
+    printf("HIP Error: %s\n", hipGetErrorString(status));  \
+  } }
+
+// from A to B
+__global__ void dcopy_(int nr, int nc, double *A, double *B)
+{
+    int x = blockIdx.x*blockDim.x + threadIdx.x;
+    int y = blockIdx.y*blockDim.y + threadIdx.y;
+    int limx = (x+blockDim.y)<nc?(x+blockDim.y):nc;
+    if (DEBUG && x==0 && y==0) printf("blockDim.x=%i, blockDim.y=%i\n", blockDim.x, blockDim.y);
+    if (DEBUG) printf("Block (%3.i,%3.i), Thread (%3.i,%3.i), solving for inds=%3.i-%3.i\n", blockIdx.x, blockIdx.y, threadIdx.x, threadIdx.y, x, limx);
+    if (y < nr) {
+        for (; x < limx; ++x ) {
+            int ind = y*nc + x;
+            B[ind] = A[ind];
+        }
+    }
+
+}
+
 
 
 int main(void)
@@ -29,12 +54,26 @@ int main(void)
 
     // TODO: allocate vectors x_ and y_ on the GPU
     // TODO: copy initial values from CPU to GPU (x -> x_ and y -> y_)
+    HIP_SAFECALL(hipMalloc(&x_, sizeof(double) * size));
+    HIP_SAFECALL(hipMalloc(&y_, sizeof(double) * size));
+    HIP_SAFECALL(hipMemcpy(x_, x, sizeof(double) * size, hipMemcpyHostToDevice));
+    HIP_SAFECALL(hipMemcpy(y_, y, sizeof(double) * size, hipMemcpyHostToDevice));
+
+
 
     // TODO: define grid dimensions (use 2D grid!)
+    // 13*32=416
+    // assume every thread makes 300 steps -> 2 block-cols
+    dim3 blocks(13, 2, 1);
+    dim3 threads(1, 32, 1);
+    
     // TODO: launch the device kernel
-    hipLaunchKernelGGL(...);
+    hipLaunchKernelGGL(dcopy_, blocks, threads, 0, 0, n, m, x_, y_);
+    HIP_SAFECALL(hipGetLastError()); 
+
 
     // TODO: copy results back to CPU (y_ -> y)
+    HIP_SAFECALL(hipMemcpy(y, y_, sizeof(double) * size, hipMemcpyDeviceToHost));
 
     // confirm that results are correct
     double error = 0.0;
