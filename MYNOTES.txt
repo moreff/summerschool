@@ -1,0 +1,139 @@
+mpicxx -o my_mpi_prog my_mpi_code.cpp
+mpicxx -o my_mpi_prog my_mpi_code.cpp -fsanitize=memory -g
+mpicxx -o my_mpi_prog my_mpi_code.cpp -fsanitize=memory -g
+mpicxx -O0 main.cpp -o main -fsanitize=address -g
+mpicxx -g -O0 main.cpp -o main -fopenmp
+
+#include <mpi.h>
+MPI_Init(&argc, &argv);
+MPI_Finalize();
+MPI_Comm_size(MPI_COMM_WORLD, &ntasks);
+MPI_Comm_rank(MPI_COMM_WORLD, &myid);
+MPI_Status status;
+MPI_Get_count(status, MPI_INT, count)
+MPI_Barrier(MPI_COMM_WORLD);
+MPI_Send(sendbuf.data(), size, MPI_INT, i, tag, MPI_COMM_WORLD);
+MPI_Recv(recvbuf.data(), size, MPI_INT, 0, tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+MPI_Sendrecv(message.data(), size, MPI_INT, destination, myid + 1, receiveBuffer.data(), size, MPI_INT, source, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+MPI_Bcast(sendbuf.data(), size, MPI_INT, 0, MPI_COMM_WORLD);
+MPI_Scatter(sendbuf.data() + 2*rank, 2, MPI_INT, recvbuf.data(), 2, MPI_INT, 0, MPI_COMM_WORLD);
+MPI_Scatterv(...);
+MPI_Gather(sendbuffer, buffersize, MPI_INT, printbuffer, buffersize, MPI_INT, 0, MPI_COMM_WORLD);
+MPI_Allgather(...);
+MPI_Gatherv(sendbuf.data(), recvcounts[rank], MPI_INT, recvbuf.data(), recvcounts, displs, MPI_INT, 1, MPI_COMM_WORLD);
+MPI_Alltoall(sendbuf.data(), 2, MPI_INT, recvbuf.data(), 2, MPI_INT, MPI_COMM_WORLD);
+MPI_Reduce(sendbuf, recvbuf, count, datatype, MPI_SUM, root, comm);
+MPI_Allreduce(&local_average, &average, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+
+// Communicators
+MPI_Comm_split(MPI_COMM_WORLD, rank/2==0?1:2, rank, &sub_comm);
+MPI_Comm_rank(subcomm, &mysubid);
+
+// Datatypes
+MPI_Type_vector(8, 1, 8, MPI_INT, &newtype);
+MPI_Type_contiguous(ny + 2, MPI_DOUBLE, &parallel.rowtype);
+MPI_Type_indexed(4, blocklens, displs, MPI_INT, &newtype);
+MPI_Type_create_subarray(2, sizes, subsizes, offsets, MPI_ORDER_C, MPI_INT, &newtype);
+MPI_Type_create_struct(3, blocklen, disp, type, &Particletype);
+MPI_Type_commit(&parallel.columntype);
+MPI_Aint disp[3];
+MPI_Get_address(&particle[0].charge, &disp[0]);
+
+// Extent
+MPI_Aint aint;
+MPI_Type_get_extent(particletype, &lb, &extent);
+MPI_Type_create_resized(oldtype, 0, sizeof(particle[0]), &particletype);
+MPI_Type_commit(&particletype);
+MPI_Type_free(&oldtype);
+
+// Cartesian grid
+MPI_Cart_create(MPI_COMM_WORLD, 1, dims, periods, true, &comm1d);
+MPI_Cart_shift(comm1d, 0,  1, &left, &right);
+MPI_Cart_rank(comm, coords, rank;
+
+// Non-blocking comm
+MPI_Isend(message.data(), size, MPI_INT, destination, myid+1, MPI_COMM_WORLD, &requests[0]);
+MPI_Wait(&requests[0], MPI_STATUS_IGNORE);
+MPI_Irecv(receiveBuffer.data(), size, MPI_INT, source, myid, MPI_COMM_WORLD, &requests[1]);
+MPI_Waitall(ntasks, requests, MPI_STATUS_IGNORE);
+MPI_Test(request, flag, status);
+MPI_Ibcast(sendbuf, 2 * NTASKS, MPI_INT, 0, MPI_COMM_WORLD, &request);
+
+// Persistent comm
+MPI_Request recv_req, send_req;
+MPI_Recv_init(buf1, cnt, MPI_DOUBLE, src, tag, MPI_COMM_WORLD, &recv_req);
+MPI_Send_init(buf2, cnt, MPI_DOUBLE, dst, tag, MPI_COMM_WORLD, &send_req);
+MPI_Start(&recv_req);
+MPI_Start(&send_req);
+MPI_Wait(&send_req, MPI_STATUS_IGNORE);
+MPI_Wait(&recv_req, MPI_STATUS_IGNORE);
+
+// Parallel I/O
+MPI_File_open(comm, filename, mode, info, fhandle)
+MPI_File_write_at(fhandle, disp, buffer, count, datatype, status)
+MPI_File_read_at(fhandle, disp, buffer, count, datatype, status)
+MPI_File_seek(fhandle, disp, whence)
+MPI_File_write(fhandle, buffer, count, datatype, status)
+MPI_File_read(fhandle, buffer, count, datatype, status)
+MPI_File_set_view(fhandle, disp, etype, filetype, datarep, info)
+
+MPI_Init_thread(required, provided) // MPI_THREAD_SINGLE < MPI_THREAD_FUNNELED < MPI_THREAD_SERIALIZED < MPI_THREAD_MULTIPLE
+export OMP_NUM_THREADS=4
+export OMP_AFFINITY_FORMAT="Process %P thread %0.3n affinity %A"
+export OMP_DISPLAY_AFFINITY=true
+export OMP_PLACES=cores
+export OMP_PROC_BIND=close # if not specified, OS will move around threads
+export OMP_PROC_BIND=spread
+
+#pragma omp parallel
+#pragma omp for
+#ifdef _OPENMP
+#pragma omp parallel private(omp_rank)
+#pragma omp parallel for shared(x,y,n) private(i) reduction(+:asum)
+#pragma omp task [clause[[,] clause],...]
+#pragma omp taskwait
+
+// Performance
+scorep scalasca
+
+#pragma omp target
+#pragma omp teams
+#pragma omp distribute
+#pragma omp teams num_teams(32)
+#pragma omp parallel num_threads(128)
+#pragma omp loop
+#pragma omp target map(to:x) map(tofrom:y) // to from tofrom alloc
+#pragma omp target data map(type:list)
+
+#pragma omp requires unified_shared_memory
+
+// For unstructured data
+#pragma omp target enter data map(alloc:x[0:n],y[0:n])
+#pragma omp target data use_device_ptr(x, y)
+#pragma omp target loop reduction(+:inside)
+#pragma omp target exit data map(delete:x[:n],y[:n])
+
+#pragma omp target nowait
+#pragma omp target depend(in: A) depend(out: B) nowait
+#pragma omp taskwait
+
+__global__ void axpy_(int n, double a, double *x, double *y) // kernel
+hipLaunchKernelGGL(somekernel, blocks, threads, 0, 0, ...) // HIP
+somekernel<<<blocks, threads, 0, 0>>>(...) // CUDA
+hipMalloc(&x_, sizeof(double) * n);
+hipMemcpy(x_, x, sizeof(double) * n, hipMemcpyHostToDevice);
+hipMemcpy(x, x_, sizeof(double) * n, hipMemcpyDeviceToHost);
+hipMallocManaged((void**)&A, N*sizeof(int));
+
+#define HIP_SAFECALL(x) {      \
+  hipError_t status = x;       \
+  if (status != hipSuccess) {  \
+    printf("HIP Error: %s\n", hipGetErrorString(status));  \
+  } }
+
+hipStreamCreate(&stream[i]);
+hipMemcpyAsync(dst, src, bytes, hipMemcpyHostToDevice, stream);
+hipDeviceSynchronize();
+hipStreamSynchronize(streamid);
+
+hipGetDeviceCount(int *count)
